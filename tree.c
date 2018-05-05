@@ -182,6 +182,9 @@ void delTree(HTree t) {
     return;
   Tree *tptr = (Tree*)t;
   recurDel(tptr->root);
+  tptr->compar = NULL;
+  tptr->print = NULL;
+  t = NULL;
   return;
 }
 
