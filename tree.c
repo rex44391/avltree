@@ -15,6 +15,8 @@ static void myprint(const void *a) {
 
 typedef struct leaf {
   void *data;
+  int bf;//balanced factor
+  int level;
   struct leaf *left;
   struct leaf *right;
 } Leaf;
@@ -53,6 +55,36 @@ HTree getTree(int (*compar)(const void*, const void*),
   t->print = print;
   return ((void*)t);
 }
+
+void calBf(Leaf *l) {
+  if(!l)
+    return;
+  
+  if(l->left) {
+    calBf(l->left);
+    l->level = l->left->level + 1;
+    if(l->right) {
+      calBf(l->right);
+      if(l->right->level > l->left-> level) {
+        l->level = l->right->level + 1;
+      }
+      l->bf = l->left->level - l->right->level;
+    } else {//has left subtree but no right subtree
+      l->level = l->left->level + 1;
+      l->bf = l->left->level;
+    }
+
+  } else if(l->right) {//has right subtree but no left subtree
+    calBf(l->right);
+    l->level = l->right->level + 1;
+    l->bf = -(l->right->level);
+  } else {//has no subtree, terminal condition
+    l->level = 0;
+    l->bf = 0;
+  }
+  return;
+}
+
 
 void addLeafToTree(HTree t, void *data) {
   if(!t || !data) 
@@ -171,7 +203,8 @@ void recurDel(Leaf *l) {
     recurDel(l->left);
   if(l->right)
     recurDel(l->right);
-  printf("delete:%d\n", *((int*)l->data));
+  printf("delete:%d, level: %d, bf: %d\n", 
+      *((int*)l->data), l->level, l->bf);
   delLeaf(l);
   l = NULL;
   return;
@@ -181,6 +214,8 @@ void delTree(HTree t) {
   if(!t)
     return;
   Tree *tptr = (Tree*)t;
+  calBf(tptr->root);
+
   recurDel(tptr->root);
   tptr->compar = NULL;
   tptr->print = NULL;
@@ -241,7 +276,7 @@ int main() {
   
   int *data16 = (int*)malloc(sizeof(int));
   *data16 = 1;
-  delLeafFromTree(t, data16);
+  //delLeafFromTree(t, data16);
   printTree(t);
   delTree(t);
   return 0;
