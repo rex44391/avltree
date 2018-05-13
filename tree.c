@@ -123,6 +123,73 @@ void delRoute(Route *r) {
   return;
 }
 
+void typeLL(Leaf **pivot) {
+  printf("LL case!\n");
+  Leaf *left_temp = (*pivot)->left;
+  (*pivot)->left  = ((*pivot)->left)->right;
+  left_temp->right = (*pivot);
+  (*pivot) = left_temp;
+  return;
+}
+
+void typeLR(Leaf **pivot) {
+  printf("LR case!\n");
+  Leaf *left_temp = (*pivot)->left;
+  Leaf *left_right_temp = ((*pivot)->left)->right;
+        
+  if(! (left_right_temp->left) ) {
+    left_temp->right = NULL;
+  } else {
+    left_temp->right = left_right_temp->left;
+  }
+
+  if(! (left_right_temp->right) ) {
+    (*pivot)->left = NULL;
+  } else {
+    (*pivot)->left = left_right_temp->right;
+  }
+
+  left_right_temp->left = left_temp;
+  left_right_temp->right = (*pivot);
+
+  (*pivot) = left_right_temp;
+  return;
+}
+
+void typeRL(Leaf **pivot) {
+  printf("RL case!\n");
+  Leaf *right_temp = (*pivot)->right;
+  Leaf *right_left_temp = ((*pivot)->right)->left;
+
+  if( !(right_left_temp->left) )  {
+    (*pivot)->right = NULL;
+  } else {
+    (*pivot)->right = right_left_temp->left;
+  }
+        
+  if( !(right_left_temp->right) ) {
+    right_temp->left = NULL;
+  } else {
+    right_temp->left = right_left_temp->right;
+  }
+        
+  right_left_temp->right = right_temp;
+  right_left_temp->left = (*pivot);
+        
+  (*pivot) = right_left_temp;
+  return;
+}
+
+void typeRR(Leaf **pivot) {
+  printf("RR case!\n");
+  Leaf *right_temp = (*pivot)->right;
+  (*pivot)->right  = ((*pivot)->right)->left;
+  right_temp->left = (*pivot);
+  (*pivot) = right_temp;
+  return;
+}
+
+
 void adjustToAvl(Tree *t, Route *r) {
   calBf(t->root);
   
@@ -159,64 +226,18 @@ void adjustToAvl(Tree *t, Route *r) {
     if(r->direction[pivot_flag+1] == 0) {
       if(r->direction[pivot_flag+2] == 0) {
         //LL case
-        printf("LL case!\n");
-        Leaf *left_temp = (*pivot)->left;
-        (*pivot)->left  = ((*pivot)->left)->right;
-        left_temp->right = (*pivot);
-        (*pivot) = left_temp;
+        typeLL(pivot);
       } else {
         //LR case
-        printf("LR case!\n");
-        Leaf *left_temp = (*pivot)->left;
-        Leaf *left_right_temp = ((*pivot)->left)->right;
-        
-        if(! (left_right_temp->left) ) {
-          left_temp->right = NULL;
-        } else {
-          left_temp->right = left_right_temp->left;
-        }
-
-        if(! (left_right_temp->right) ) {
-          (*pivot)->left = NULL;
-        } else {
-          (*pivot)->left = left_right_temp->right;
-        }
-
-        left_right_temp->left = left_temp;
-        left_right_temp->right = (*pivot);
-
-        (*pivot) = left_right_temp;
+        typeLR(pivot);
       }
     } else {
       if(r->direction[pivot_flag+2] == 0) {
         //RL case
-        printf("RL case!\n");
-        Leaf *right_temp = (*pivot)->right;
-        Leaf *right_left_temp = ((*pivot)->right)->left;
-
-        if( !(right_left_temp->left) )  {
-          (*pivot)->right = NULL;
-        } else {
-          (*pivot)->right = right_left_temp->left;
-        }
-        
-        if( !(right_left_temp->right) ) {
-          right_temp->left = NULL;
-        } else {
-          right_temp->left = right_left_temp->right;
-        }
-        
-        right_left_temp->right = right_temp;
-        right_left_temp->left = (*pivot);
-        
-        (*pivot) = right_left_temp;
+        typeRL(pivot);
       } else {
         //RR case
-        printf("RR case!\n");
-        Leaf *right_temp = (*pivot)->right;
-        (*pivot)->right  = ((*pivot)->right)->left;
-        right_temp->left = (*pivot);
-        (*pivot) = right_temp;
+        typeRR(pivot);
       }
     }      
   }//end of if(pivot)
@@ -288,6 +309,52 @@ void printTree(HTree t) {
   printf("\n");
 }
 
+void findPivot(Leaf **l, Leaf ***pivot) {
+  if((*l)->bf > 1 || (*l)->bf < -1) {
+    *pivot = &(*l);
+    return;
+  }
+
+  if((*l)->left) {
+    findPivot( &((*l)->left), pivot);
+  }
+  if((*l)->right) {
+    findPivot( &((*l)->right), pivot);
+  }
+  return;
+}
+
+void delAdjustToAvl(Tree *t) {
+  calBf(t->root);
+  Leaf **pivot = NULL;
+  findPivot(&t->root, &pivot);
+  
+  if(!pivot) {
+    return;
+  } else {
+    printf("pivot: %d\n", *((int*)(*pivot)->data));//for demostration purpose, need to delete
+    if( (*pivot)->bf >= 0 ) {
+      if( (*pivot)->left->bf >= 0) {
+        //LL case
+        typeLL(pivot);
+      } else {
+        //LR case
+        typeLR(pivot);
+      }
+    } else {
+      if( (*pivot)->right->bf >= 0 ) {
+        //RL case
+        typeRL(pivot);
+      } else {
+        //RR case
+        typeRR(pivot);
+      }
+    }
+  }
+
+  return;
+}
+
 void delLeafFromTree(HTree t, void *del_data) {
   if(!t)
     return;
@@ -335,11 +402,13 @@ void delLeafFromTree(HTree t, void *del_data) {
     *find = (*find)->right;
     delLeaf(temp);
   }
-
+  delAdjustToAvl(tptr);
+  return;
 }
 
 
 void recurDel(Leaf *l) {
+  //used only by delTree function
   if(!l)
     return;
   
@@ -373,21 +442,21 @@ int main() {
   void *t = getTree(mycompar, myprint);
 
   int *data1 = (int*)malloc(sizeof(int));
-  *data1 = 111;
+  *data1 = 50;
   int *data2 = (int*)malloc(sizeof(int));
-  *data2 = 15;
+  *data2 = 20;
   int *data3 = (int*)malloc(sizeof(int));
-  *data3 = 24;
+  *data3 = 70;
   int *data4 = (int*)malloc(sizeof(int));
-  *data4 = 55;
+  *data4 = 10;
   int *data5 = (int*)malloc(sizeof(int));
-  *data5 = 89;
+  *data5 = 60;
   int *data6 = (int*)malloc(sizeof(int));
-  *data6 = 99;
+  *data6 = 80;
   int *data7 = (int*)malloc(sizeof(int));
-  *data7 = 12;
-  int *data8 = (int*)malloc(sizeof(int));
-  *data8 = 1;
+  *data7 = 55;
+  /*int *data8 = (int*)malloc(sizeof(int));
+  *data8 = 35;
   int *data9 = (int*)malloc(sizeof(int));
   *data9 = 8;
   int *data10 = (int*)malloc(sizeof(int));
@@ -403,7 +472,7 @@ int main() {
   int *data15 = (int*)malloc(sizeof(int));
   *data15 = 22;
   int *data16 = (int*)malloc(sizeof(int));
-  *data16 = 3;
+  *data16 = 3;*/
 
   addLeafToTree(t, data1);
   addLeafToTree(t, data2);
@@ -412,7 +481,7 @@ int main() {
   addLeafToTree(t, data5);
   addLeafToTree(t, data6);
   addLeafToTree(t, data7);
-  addLeafToTree(t, data8);
+  /*addLeafToTree(t, data8);
   addLeafToTree(t, data9);
   addLeafToTree(t, data10);
   addLeafToTree(t, data11);
@@ -420,8 +489,9 @@ int main() {
   addLeafToTree(t, data13);
   addLeafToTree(t, data14);
   addLeafToTree(t, data15);
-  addLeafToTree(t, data16);
+  addLeafToTree(t, data16);*/
 
+  delLeafFromTree(t, data4);
   printTree(t);
   delTree(t);
   return 0;
